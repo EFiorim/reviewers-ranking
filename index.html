@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reviewrs Rank</title>
+  </head>
+  <body>
+    <button id="btnGetComments">Get Ranking</button>
+    <h3>Reviewers Rank</h3>
+    <div id="divRank"></div>
+    <h3>Details:</h3>
+    <div id="divDetail"></div>
+
+    <script>
+      const divRank = document.getElementById("divRank");
+      const divDetail = document.getElementById("divDetail");
+      const btnGetComments = document.getElementById("btnGetComments");
+      btnGetComments.addEventListener("click", getComments);
+
+      async function getComments() {
+        console.log("getting repos");
+
+        const projects = ["apn-shared", "business-interface", "admin-interface"];
+
+        const comments = [];
+        const users = {};
+
+        let page = 1;
+        let keepLoading = true;
+
+        for (let project of projects) {
+          while (keepLoading) {
+            let res = await loadComments(project, page);
+            comments.push(...res);
+            if (res.length < 100) {
+              keepLoading = false;
+            }
+            page++;
+          }
+          page = 1;
+          keepLoading = true;
+        }
+
+        comments
+          .filter((a) => !a.in_reply_to_id)
+          .forEach((i) => {
+            let anchor = document.createElement("a");
+            anchor.href = i.html_url;
+            anchor.innerText = i.body.slice(0, 20);
+            if (users[i.user.login]) {
+              users[i.user.login].push(anchor);
+            } else {
+              users[i.user.login] = [anchor];
+            }
+          });
+
+        const rankedUsers = Object.keys(users)
+          .map((key) => {
+            return { name: key, commentsAmount: users[key].length };
+          })
+          .sort((a, b) => {
+            return a.commentsAmount - b.commentsAmount;
+          });
+
+        const medalMap = {
+          0: "🥇",
+          1: "🥈",
+          2: "🥉",
+        };
+
+        rankedUsers.reverse().forEach((user, index) => {
+          divRank.appendChild(document.createTextNode("-------------------------"));
+          divRank.appendChild(document.createElement("br"));
+          divRank.appendChild(document.createTextNode((medalMap[index] || "") + " " + user.name + ": 💬 " + user.commentsAmount));
+          divRank.appendChild(document.createElement("br"));
+        });
+
+        for (const [key, value] of Object.entries(users)) {
+          divDetail.appendChild(document.createTextNode("-------------------------"));
+          divDetail.appendChild(document.createElement("br"));
+          divDetail.appendChild(document.createTextNode(key));
+          divDetail.appendChild(document.createElement("br"));
+          value.forEach((link) => {
+            divDetail.appendChild(document.createElement("br"));
+            divDetail.appendChild(link);
+            divDetail.appendChild(document.createElement("br"));
+          });
+        }
+      }
+
+      async function loadComments(project, page) {
+        const token = "";
+        console.log("getting: ", project, "page ", page);
+        const headers = {
+          Authorization: "Token " + token,
+        };
+
+        const url = "https://api.github.com/repos/appinioGmbH/" + project + "/pulls/comments?since=2022-08-01T00:00:00Z&per_page=100&page=" + page;
+        const response = await fetch(url, {
+          headers: headers,
+        });
+        return await response.json();
+      }
+    </script>
+  </body>
+</html>
