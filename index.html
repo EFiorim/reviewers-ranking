@@ -20,10 +20,7 @@
       btnGetComments.addEventListener("click", getComments);
 
       async function getComments() {
-        console.log("getting repos");
-
         const projects = ["apn-shared", "business-interface", "admin-interface"];
-
         const comments = [];
         const users = {};
 
@@ -48,7 +45,7 @@
           .forEach((i) => {
             let anchor = document.createElement("a");
             anchor.href = i.html_url;
-            anchor.innerText = i.body.slice(0, 20);
+            anchor.innerText = i.body.replace("\r\n", "").slice(0, 100) || "?";
             if (users[i.user.login]) {
               users[i.user.login].push(anchor);
             } else {
@@ -60,10 +57,26 @@
           .map((key) => {
             return { name: key, commentsAmount: users[key].length };
           })
-          .sort((a, b) => {
-            return a.commentsAmount - b.commentsAmount;
-          });
+          .sort((a, b) => a.commentsAmount - b.commentsAmount);
 
+        drawnElements(users, rankedUsers);
+      }
+
+      async function loadComments(project, page) {
+        const token = "";
+        console.log("getting: ", project, "page ", page);
+        const headers = {
+          Authorization: "Token " + token,
+        };
+        const url = `https://api.github.com/repos/appinioGmbH/${project}/pulls/comments?since=2022-08-01T00:00:00Z&per_page=100&page=${page}`;
+
+        const response = await fetch(url, {
+          headers: headers,
+        });
+        return await response.json();
+      }
+
+      function drawnElements(users, rankedUsers) {
         const medalMap = {
           0: "🥇",
           1: "🥈",
@@ -73,12 +86,12 @@
         rankedUsers.reverse().forEach((user, index) => {
           divRank.appendChild(document.createTextNode("-------------------------"));
           divRank.appendChild(document.createElement("br"));
-          divRank.appendChild(document.createTextNode((medalMap[index] || "") + " " + user.name + ": 💬 " + user.commentsAmount));
+          divRank.appendChild(document.createTextNode(`${medalMap[index] || ""} ${user.name}: 💬 ${user.commentsAmount}`));
           divRank.appendChild(document.createElement("br"));
         });
 
         for (const [key, value] of Object.entries(users)) {
-          divDetail.appendChild(document.createTextNode("-------------------------"));
+          divDetail.appendChild(document.createTextNode("------------------------------------------------------------"));
           divDetail.appendChild(document.createElement("br"));
           divDetail.appendChild(document.createTextNode(key));
           divDetail.appendChild(document.createElement("br"));
@@ -88,20 +101,6 @@
             divDetail.appendChild(document.createElement("br"));
           });
         }
-      }
-
-      async function loadComments(project, page) {
-        const token = "";
-        console.log("getting: ", project, "page ", page);
-        const headers = {
-          Authorization: "Token " + token,
-        };
-
-        const url = "https://api.github.com/repos/appinioGmbH/" + project + "/pulls/comments?since=2022-08-01T00:00:00Z&per_page=100&page=" + page;
-        const response = await fetch(url, {
-          headers: headers,
-        });
-        return await response.json();
       }
     </script>
   </body>
